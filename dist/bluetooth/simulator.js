@@ -8,16 +8,16 @@ class BluetoothSimulator extends events_1.EventEmitter {
         this.state = 'poweredOn';
         this.isScanning = false;
         this.simulatedDevices = [];
-        // Simulate some Darkline devices
+        // Enhanced simulation for Termux/Android
         this.simulatedDevices = [
             {
-                id: 'device_001',
+                id: 'termux_001',
                 address: 'aa:bb:cc:dd:ee:01',
                 advertisement: {
-                    localName: 'Darkline_Mobile_001',
+                    localName: 'Darkline_Android_001',
                     serviceUuids: ['12345678123412341234123456789abc']
                 },
-                rssi: -45,
+                rssi: -35, // Stronger signal for mobile
                 connect: (callback) => {
                     setTimeout(() => callback(), 100);
                 },

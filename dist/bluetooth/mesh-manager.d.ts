@@ -16,6 +16,9 @@ export declare class BluetoothMeshManager extends EventEmitter {
     private startDiscovery;
     private stopDiscovery;
     private startHeartbeat;
+    private handleTermuxDeviceDiscovered;
+    private handleTermuxDeviceConnected;
+    private connectToTermuxDevice;
     private handleDeviceDiscovered;
     private isDarklineDevice;
     private connectToDevice;

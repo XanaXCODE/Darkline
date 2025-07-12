@@ -2,14 +2,23 @@ import { EventEmitter } from 'events';
 import { BluetoothDevice, BluetoothMessage, MeshNode, BluetoothServerConfig, BluetoothRoute } from './types';
 import { CryptoEngine } from '../crypto/encryption';
 import { v4 as uuidv4 } from 'uuid';
-import { simulatedNoble } from './simulator';
+import { TermuxBluetoothAdapter } from './termux-adapter';
 
-// Try to import noble, fall back to simulator if it fails
-let noble: any;
-try {
-  noble = require('noble');
-} catch (error) {
-  noble = simulatedNoble;
+// Check if running on Android/Termux
+const isAndroid = process.platform === 'android' || process.env.TERMUX_VERSION !== undefined;
+
+let bluetoothAdapter: any;
+if (isAndroid) {
+  // Use Termux Bluetooth adapter for Android
+  bluetoothAdapter = new TermuxBluetoothAdapter();
+} else {
+  // Try to use noble for other platforms
+  try {
+    bluetoothAdapter = require('noble');
+  } catch (error) {
+    console.log('Noble not available, using Termux adapter as fallback');
+    bluetoothAdapter = new TermuxBluetoothAdapter();
+  }
 }
 
 export class BluetoothMeshManager extends EventEmitter {
@@ -29,31 +38,63 @@ export class BluetoothMeshManager extends EventEmitter {
   }
 
   private setupNoble() {
-    noble.on('stateChange', (state: string) => {
-      if (state === 'poweredOn') {
+    if (isAndroid) {
+      // Setup Termux Bluetooth adapter
+      bluetoothAdapter.on('ready', () => {
         this.emit('ready');
-      } else {
-        this.stopDiscovery();
-      }
-    });
+      });
 
-    noble.on('discover', (peripheral: any) => {
-      this.handleDeviceDiscovered(peripheral);
-    });
+      bluetoothAdapter.on('deviceDiscovered', (device: any) => {
+        this.handleTermuxDeviceDiscovered(device);
+      });
+
+      bluetoothAdapter.on('deviceConnected', (device: any) => {
+        this.handleTermuxDeviceConnected(device);
+      });
+    } else {
+      // Setup Noble for other platforms
+      bluetoothAdapter.on('stateChange', (state: string) => {
+        if (state === 'poweredOn') {
+          this.emit('ready');
+        } else {
+          this.stopDiscovery();
+        }
+      });
+
+      bluetoothAdapter.on('discover', (peripheral: any) => {
+        this.handleDeviceDiscovered(peripheral);
+      });
+    }
   }
 
   async startMesh(): Promise<void> {
     return new Promise((resolve, reject) => {
-      if (noble.state === 'poweredOn') {
-        this.startDiscovery();
-        this.startHeartbeat();
-        resolve();
-      } else {
-        this.once('ready', () => {
+      if (isAndroid) {
+        // Android/Termux flow
+        if (bluetoothAdapter.isBluetoothAvailable && bluetoothAdapter.isBluetoothAvailable()) {
           this.startDiscovery();
           this.startHeartbeat();
           resolve();
-        });
+        } else {
+          this.once('ready', () => {
+            this.startDiscovery();
+            this.startHeartbeat();
+            resolve();
+          });
+        }
+      } else {
+        // Noble flow for other platforms
+        if (bluetoothAdapter.state === 'poweredOn') {
+          this.startDiscovery();
+          this.startHeartbeat();
+          resolve();
+        } else {
+          this.once('ready', () => {
+            this.startDiscovery();
+            this.startHeartbeat();
+            resolve();
+          });
+        }
       }
 
       setTimeout(() => {
@@ -67,8 +108,13 @@ export class BluetoothMeshManager extends EventEmitter {
 
     this.isScanning = true;
 
-    // Start scanning for Darkline devices
-    noble.startScanning([], true);
+    if (isAndroid) {
+      // Start Termux Bluetooth scanning
+      bluetoothAdapter.startScanning();
+    } else {
+      // Start Noble scanning for other platforms
+      bluetoothAdapter.startScanning([], true);
+    }
 
     // Periodic discovery
     this.discoveryTimer = setInterval(() => {
@@ -80,7 +126,12 @@ export class BluetoothMeshManager extends EventEmitter {
     if (!this.isScanning) return;
 
     this.isScanning = false;
-    noble.stopScanning();
+    
+    if (isAndroid) {
+      bluetoothAdapter.stopScanning();
+    } else {
+      bluetoothAdapter.stopScanning();
+    }
 
     if (this.discoveryTimer) {
       clearInterval(this.discoveryTimer);
@@ -93,6 +144,57 @@ export class BluetoothMeshManager extends EventEmitter {
       this.sendHeartbeat();
       this.cleanupStaleNodes();
     }, this.config.heartbeatInterval);
+  }
+
+  private handleTermuxDeviceDiscovered(termuxDevice: any) {
+    const device: BluetoothDevice = {
+      id: termuxDevice.id,
+      name: termuxDevice.name || 'Unknown Termux Device',
+      address: termuxDevice.address,
+      rssi: termuxDevice.rssi,
+      lastSeen: new Date(),
+      isConnected: false
+    };
+
+    // Check if this is a Darkline device by name pattern
+    if (this.isDarklineDevice(device)) {
+      this.devices.set(device.id, device);
+      this.emit('deviceDiscovered', device);
+
+      // Try to connect if we have room
+      if (this.meshNodes.size < this.config.maxConnections) {
+        this.connectToTermuxDevice(termuxDevice);
+      }
+    }
+  }
+
+  private handleTermuxDeviceConnected(termuxDevice: any) {
+    const device = this.devices.get(termuxDevice.id);
+    if (device) {
+      device.isConnected = true;
+      
+      // Create mesh node
+      const meshNode: MeshNode = {
+        device,
+        connections: new Set(),
+        lastHeartbeat: new Date(),
+        routingTable: new Map()
+      };
+
+      this.meshNodes.set(device.id, meshNode);
+      this.emit('nodeConnected', meshNode);
+
+      // Send handshake
+      this.sendHandshake(device.id);
+    }
+  }
+
+  private async connectToTermuxDevice(termuxDevice: any): Promise<void> {
+    try {
+      await bluetoothAdapter.connectToDevice(termuxDevice.id);
+    } catch (error) {
+      console.log('Failed to connect to Termux device:', error);
+    }
   }
 
   private async handleDeviceDiscovered(peripheral: any) {
@@ -119,10 +221,13 @@ export class BluetoothMeshManager extends EventEmitter {
     }
   }
 
-  private isDarklineDevice(peripheral: any): boolean {
-    // Check if device advertises Darkline service UUID
-    const serviceUUIDs = peripheral.advertisement?.serviceUuids || [];
-    return serviceUUIDs.includes('12345678123412341234123456789abc');
+  private isDarklineDevice(device: any): boolean {
+    // Check by name pattern for Darkline devices
+    const name = device.name || device.advertisement?.localName || '';
+    return name.toLowerCase().includes('darkline') || 
+           name.toLowerCase().includes('termux') ||
+           // Check service UUID for Noble devices
+           (device.advertisement?.serviceUuids || []).includes('12345678123412341234123456789abc');
   }
 
   private async connectToDevice(peripheral: any): Promise<void> {
