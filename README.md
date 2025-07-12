@@ -1,276 +1,204 @@
-# 🌑 DarkLine
+# Darkline - Decentralized Chat System
 
-**Decentralized Terminal Chat Application**
+A secure, decentralized chat application with end-to-end encryption using Curve25519 + AES-GCM.
 
-DarkLine is a peer-to-peer, terminal-based chat application that enables secure, encrypted communication without relying on centralized servers. Built with Node.js, it features automatic peer discovery, end-to-end encryption, and a beautiful terminal interface.
+## Features
 
-## ✨ Features
+- 🔐 **End-to-End Encryption**: Curve25519 key exchange + AES-GCM
+- 🏠 **Room-based Chat**: Create public, password-protected, or P2P rooms
+- 💬 **Direct Messaging**: Private conversations between users
+- ⭐ **Favorites System**: Mark important users as favorites
+- 📢 **Mentions**: Notify users with @nickname
+- 💾 **Store & Forward**: Messages delivered when users come online
+- 🌐 **Decentralized**: Connect to any server or run your own
+- 🚫 **No Tracking**: Privacy-focused design
 
-- 🔐 **End-to-End Encryption**: All messages are encrypted using RSA + AES hybrid encryption
-- 🌐 **Decentralized P2P Network**: No central server required - peers discover each other automatically
-- 💻 **Terminal UI**: Clean, responsive terminal interface built with Blessed
-- 💾 **Local Storage**: All contacts and message history stored locally
-- 🔑 **Identity Management**: Automatic key generation and identity management
-- 🔍 **Auto-Discovery**: Automatic peer discovery on local network
-- 📱 **Contact Management**: Add, remove, and manage contacts
-- 💬 **Real-time Chat**: Instant messaging with online/offline status
-- 🔒 **Privacy-First**: No data collection, everything stays on your device
+## Installation
 
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Node.js 16+ 
-- npm or yarn
-
-### Installation
-
+### Linux (Ubuntu/Debian)
 ```bash
-# Clone the repository
+# Install Node.js if not already installed
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt-get install -y nodejs
+
+# Clone and install Darkline
 git clone <repository-url>
 cd darkline
-
-# Install dependencies
 npm install
-
-# Start the application
-npm start
-```
-
-### Building from Source
-
-```bash
-# Install dependencies
-npm install
-
-# Build (no build step required for Node.js)
 npm run build
 
-# Start DarkLine
-npm start
+# Make globally available
+sudo npm link
 ```
 
-## 🎮 Usage
+### Windows
+1. Install [Node.js](https://nodejs.org/) (LTS version)
+2. Download and extract Darkline
+3. Open Command Prompt as Administrator:
+```cmd
+cd path\to\darkline
+npm install
+npm run build
+npm link
+```
 
-### Interface Overview
-
-DarkLine features a **hacker-style terminal interface** similar to Claude:
-- **Main Area**: Scrollable output with command history and messages
-- **Command Line**: Bottom input area with green prompt
-- **Command-Based**: All actions done via text commands
-
-### Commands
-
-#### 🔧 **System Commands**
+### Android APK
+Build and install the mobile app:
 ```bash
-help              # Show all available commands
-address           # Show your network address
-clear             # Clear screen (or Ctrl+L)
-exit              # Exit DarkLine (or Ctrl+C)
+# Build APK (requires Expo account)
+bash scripts/build-android.sh
+
+# Or for local development
+cd mobile
+npm install
+expo start
 ```
 
-#### 👥 **Contact Management**
+## Quick Start
+
+### 1. Start a Server
 ```bash
-contacts          # List all contacts (saved + online)
-add <name> <ip>   # Add contact manually
-                  # Example: add john 192.168.1.100:8080
+# Interactive server setup
+darkline create-server
+
+# Or start with defaults
+darkline server --port 8080 --host localhost
 ```
 
-#### 💬 **Messaging** 
+### 2. Connect as Client
 ```bash
-connect <name>    # Start chat with contact
-/disconnect       # Exit current chat
-# Type normally to send messages when connected
+# Connect to a server
+darkline connect --server ws://localhost:8080 --nickname YourName
+
+# Or with interactive setup
+darkline connect
 ```
 
-### First Launch
+## Usage
 
-1. Run `npm start`
-2. DarkLine will:
-   - Generate your unique identity
-   - Create data directory (`~/.darkline`) 
-   - Start network discovery
-   - Show the ASCII art welcome screen
+### Chat Commands
+- `/help` - Show available commands
+- `/users` - List online users
+- `/rooms` - List available rooms
+- `/join #roomname [password]` - Join a room
+- `/create roomname [type] [password]` - Create new room
+- `/leave` - Leave current room
+- `/favorite username` - Toggle user as favorite
+- `@username message` - Send direct message
+- `/quit` - Exit chat
 
-### Example Session
+### Room Types
+- **Public**: Anyone can join (default)
+- **Password**: Requires password to join
+- **P2P**: Direct peer-to-peer rooms
 
+### Mentions
+Use `@username` in messages to notify specific users.
+
+## Server Configuration
+
+### Environment Variables
 ```bash
-darkline> help                    # Show commands
-darkline> address                 # Get your address  
-darkline> add alice 192.168.1.50  # Add contact
-darkline> contacts                # List contacts
-darkline> connect alice           # Start chatting
-[alice]> Hello Alice!             # Send message
-[alice]> /disconnect              # Exit chat
-darkline> exit                    # Quit
+DARKLINE_PORT=8080
+DARKLINE_HOST=localhost
+DARKLINE_MAX_CONNECTIONS=100
+DARKLINE_ENABLE_P2P=true
+DARKLINE_STORE_MESSAGES=true
 ```
 
-### Navigation Shortcuts
+### Custom Server
+```bash
+darkline server \
+  --port 8080 \
+  --host 0.0.0.0 \
+  --name "My Server" \
+  --max-connections 200 \
+  --no-p2p \
+  --no-store
+```
 
-- **↑/↓**: Command history navigation
-- **Ctrl+C**: Exit application  
-- **Ctrl+L**: Clear screen
-- **Tab**: Focus input (if needed)
+## Security
 
-## 🔧 Configuration
+- **Key Exchange**: Curve25519 elliptic curve
+- **Encryption**: AES-256-GCM with random nonces
+- **No Plaintext Storage**: Messages encrypted in transit and storage
+- **Perfect Forward Secrecy**: New keys per session
+- **No User Tracking**: Privacy by design
 
-Configuration is handled in `src/config/config.js`:
+## Development
 
-```javascript
+### Build from Source
+```bash
+git clone <repository-url>
+cd darkline
+npm install
+npm run build
+```
+
+### Run Tests
+```bash
+npm test
+```
+
+### Development Mode
+```bash
+# Server
+npm run dev
+
+# Client (separate terminal)
+npm run start
+```
+
+## Architecture
+
+```
+┌─────────────────┐    WebSocket    ┌─────────────────┐
+│   Client App    │◄───────────────►│  Darkline       │
+│                 │                 │  Server         │
+│ - Chat UI       │                 │                 │
+│ - Encryption    │                 │ - Message       │
+│ - P2P Support   │                 │   Routing       │
+└─────────────────┘                 │ - User Mgmt     │
+                                    │ - Room Mgmt     │
+                                    │ - Store & Fwd   │
+                                    └─────────────────┘
+```
+
+## API Protocol
+
+### Message Types
+- `handshake` - Initial connection
+- `join` - Join server with nickname
+- `message` - Room message
+- `dm` - Direct message
+- `create_room` - Create new room
+- `join_room` - Join existing room
+- `leave_room` - Leave room
+
+### Example Message
+```json
 {
-  network: {
-    port: 8080,                    // Main WebSocket port
-    discoveryPorts: [8080, 8081],  // Discovery ports
-    timeout: 5000,                 // Connection timeout
-    maxConnections: 50             // Max concurrent connections
+  "type": "message",
+  "payload": {
+    "roomId": "general",
+    "content": "Hello @username!",
+    "mentions": ["username"]
   },
-  
-  storage: {
-    dataDir: '~/.darkline',        // Data directory
-    contactsFile: 'contacts.json', // Contacts file
-    messagesFile: 'messages.json'  // Messages file
-  },
-  
-  security: {
-    keySize: 2048,                 // RSA key size
-    encryptionAlgorithm: 'aes-256-gcm' // Encryption algorithm
-  }
+  "timestamp": "2024-01-01T12:00:00Z"
 }
 ```
 
-## 🏗️ Architecture
+## Contributing
 
-### Core Components
+1. Fork the repository
+2. Create feature branch
+3. Add tests for new features
+4. Submit pull request
 
-- **DarkLine**: Main application coordinator
-- **NetworkManager**: P2P networking and peer discovery
-- **UIManager**: Terminal interface using Blessed
-- **StorageManager**: Local data persistence
-- **CryptoManager**: Encryption and security
-- **Identity**: User identity and key management
-
-### Network Protocol
-
-1. **Discovery**: UDP broadcasts for peer discovery
-2. **Connection**: WebSocket connections between peers
-3. **Handshake**: Exchange of public keys and identity verification
-4. **Messaging**: Encrypted message exchange with digital signatures
-
-### Security Model
-
-- **RSA 2048-bit** keys for identity and key exchange
-- **AES-256-GCM** for message encryption
-- **Digital signatures** for message authentication
-- **Key fingerprints** for identity verification
-- **Local storage** only - no cloud sync
-
-## 📁 Project Structure
-
-```
-darkline/
-├── src/
-│   ├── core/
-│   │   ├── DarkLine.js      # Main application
-│   │   ├── NetworkManager.js # P2P networking
-│   │   ├── UIManager.js     # Terminal interface
-│   │   ├── StorageManager.js # Data persistence
-│   │   ├── CryptoManager.js # Encryption
-│   │   └── Identity.js      # Identity management
-│   ├── config/
-│   │   └── config.js        # Configuration
-│   └── index.js             # Entry point
-├── package.json
-└── README.md
-```
-
-## 🔒 Privacy & Security
-
-### What DarkLine Does
-
-- ✅ Encrypts all messages end-to-end
-- ✅ Stores data locally only
-- ✅ Uses strong cryptographic algorithms
-- ✅ Verifies message integrity
-- ✅ Generates unique identities
-
-### What DarkLine Doesn't Do
-
-- ❌ No central servers
-- ❌ No data collection
-- ❌ No cloud storage
-- ❌ No analytics or tracking
-- ❌ No plaintext storage
-
-## 🛠️ Development
-
-### Running in Development Mode
-
-```bash
-npm run dev
-```
-
-### Dependencies
-
-- **blessed**: Terminal UI framework
-- **ws**: WebSocket implementation
-- **node-forge**: Cryptography library
-- **uuid**: UUID generation
-
-### Adding Features
-
-1. Core functionality goes in `src/core/`
-2. Configuration in `src/config/`
-3. Follow the existing architecture patterns
-4. Maintain security best practices
-
-## 🐛 Troubleshooting
-
-### Common Issues
-
-**Port Already in Use**
-```bash
-# Check what's using port 8080
-lsof -i :8080
-# Kill the process or change port in config
-```
-
-**Network Discovery Issues**
-- Ensure UDP port 9080 is not blocked
-- Check firewall settings
-- Verify network connectivity
-
-**Identity/Key Issues**
-- Delete `~/.darkline/identity.json` to regenerate
-- Ensure sufficient entropy for key generation
-
-### Debug Mode
-
-Set `DEBUG=darkline:*` environment variable for verbose logging:
-
-```bash
-DEBUG=darkline:* npm start
-```
-
-## 📄 License
+## License
 
 MIT License - see LICENSE file for details.
 
-## 🤝 Contributing
+## Support
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## 📞 Support
-
-For issues, questions, or contributions:
-
-- Open an issue on GitHub
-- Check the troubleshooting section
-- Review the code documentation
-
----
-
-**DarkLine** - Secure, Private, Decentralized Chat 🌑
+For issues and feature requests, please create an issue on the repository.

@@ -1,0 +1,41 @@
+import { BluetoothP2PClient } from './peer-to-peer-client';
+export declare class BluetoothUI {
+    private screen;
+    private client;
+    private nickname;
+    private headerBox;
+    private chatBox;
+    private inputBox;
+    private helpBox;
+    private messages;
+    private peers;
+    private devices;
+    private isConnected;
+    private showingHelp;
+    constructor(client: BluetoothP2PClient, nickname: string);
+    private setupUI;
+    private setupEventHandlers;
+    private setupClientEvents;
+    private getHeaderContent;
+    private getWelcomeMessage;
+    private getHelpContent;
+    private handleUserInput;
+    private handleCommand;
+    private sendMessage;
+    private sendDirectMessage;
+    private addChatMessage;
+    private updateChatDisplay;
+    private updateHeader;
+    private showPeers;
+    private showDevices;
+    private showStatus;
+    private clearMessages;
+    private showHelpInChat;
+    private toggleHelp;
+    private handleClipboardPaste;
+    private render;
+    private shutdown;
+    start(): void;
+    private startSimulator;
+}
+//# sourceMappingURL=ui.d.ts.map
