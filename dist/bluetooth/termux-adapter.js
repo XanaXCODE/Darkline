@@ -88,33 +88,45 @@ class TermuxBluetoothAdapter extends events_1.EventEmitter {
         }
     }
     async startFallbackScan() {
-        // Fallback: Create some realistic mobile devices for testing
+        console.log('🎭 Starting simulation mode (no real Bluetooth hardware detected)');
+        // Enhanced fallback: Create realistic cross-platform devices
         const fallbackDevices = [
             {
-                id: 'android001',
-                name: 'Android Phone',
+                id: 'windows001',
+                name: 'Darkline_Windows_001',
                 address: 'aa:bb:cc:dd:ee:01',
                 rssi: -45,
                 lastSeen: new Date(),
                 isConnected: false
             },
             {
-                id: 'termux002',
-                name: 'Termux Device',
+                id: 'android002',
+                name: 'Darkline_Android_002',
                 address: 'aa:bb:cc:dd:ee:02',
                 rssi: -35,
                 lastSeen: new Date(),
                 isConnected: false
+            },
+            {
+                id: 'laptop003',
+                name: 'Darkline_Laptop_003',
+                address: 'aa:bb:cc:dd:ee:03',
+                rssi: -65,
+                lastSeen: new Date(),
+                isConnected: false
             }
         ];
+        console.log('📱 Simulating nearby Darkline devices...');
         this.scanTimer = setInterval(() => {
             if (fallbackDevices.length > 0) {
                 const device = fallbackDevices.shift();
                 device.rssi += (Math.random() - 0.5) * 10; // Simulate signal variation
+                device.lastSeen = new Date();
                 this.discoveredDevices.set(device.id, device);
                 this.emit('deviceDiscovered', device);
+                console.log(`📡 Discovered: ${device.name} (${device.rssi}dBm)`);
             }
-        }, 2000);
+        }, 3000);
     }
     async stopScanning() {
         if (!this.isScanning)

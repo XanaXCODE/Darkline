@@ -5,20 +5,34 @@ const events_1 = require("events");
 const encryption_1 = require("../crypto/encryption");
 const uuid_1 = require("uuid");
 const termux_adapter_1 = require("./termux-adapter");
-// Check if running on Android/Termux
+// Enhanced platform detection
 const isAndroid = process.platform === 'android' || process.env.TERMUX_VERSION !== undefined;
+const isWindows = process.platform === 'win32';
+const isLinux = process.platform === 'linux';
+const isMacOS = process.platform === 'darwin';
 let bluetoothAdapter;
+// Always use TermuxBluetoothAdapter (which includes simulation) for cross-platform compatibility
+// This avoids the Windows HCI socket error and works everywhere
+console.log(`🔧 Platform detected: ${process.platform}`);
 if (isAndroid) {
-    // Use Termux Bluetooth adapter for Android
+    console.log('📱 Using Termux Bluetooth adapter for Android');
+    bluetoothAdapter = new termux_adapter_1.TermuxBluetoothAdapter();
+}
+else if (isWindows) {
+    console.log('🪟 Using fallback adapter for Windows (noble HCI not supported)');
     bluetoothAdapter = new termux_adapter_1.TermuxBluetoothAdapter();
 }
 else {
-    // Try to use noble for other platforms
+    // For Linux/macOS, try noble but fall back gracefully
+    console.log('🐧 Attempting to use noble for Linux/macOS...');
     try {
-        bluetoothAdapter = require('noble');
+        const noble = require('noble');
+        // Test if noble can initialize without throwing
+        bluetoothAdapter = noble;
+        console.log('✅ Noble loaded successfully');
     }
     catch (error) {
-        console.log('Noble not available, using Termux adapter as fallback');
+        console.log('⚠️  Noble not available, using simulation adapter');
         bluetoothAdapter = new termux_adapter_1.TermuxBluetoothAdapter();
     }
 }
@@ -35,9 +49,13 @@ class BluetoothMeshManager extends events_1.EventEmitter {
         this.setupNoble();
     }
     setupNoble() {
-        if (isAndroid) {
-            // Setup Termux Bluetooth adapter
+        // Check if we're using TermuxBluetoothAdapter (for Android, Windows, or fallback)
+        const isUsingTermuxAdapter = bluetoothAdapter instanceof termux_adapter_1.TermuxBluetoothAdapter;
+        if (isUsingTermuxAdapter) {
+            // Setup Termux/Simulation Bluetooth adapter
+            console.log('🔧 Setting up TermuxBluetoothAdapter events');
             bluetoothAdapter.on('ready', () => {
+                console.log('📡 Bluetooth adapter ready');
                 this.emit('ready');
             });
             bluetoothAdapter.on('deviceDiscovered', (device) => {
@@ -48,8 +66,10 @@ class BluetoothMeshManager extends events_1.EventEmitter {
             });
         }
         else {
-            // Setup Noble for other platforms
+            // Setup Noble for Linux/macOS (if available)
+            console.log('🔧 Setting up Noble events');
             bluetoothAdapter.on('stateChange', (state) => {
+                console.log(`📡 Bluetooth state: ${state}`);
                 if (state === 'poweredOn') {
                     this.emit('ready');
                 }
@@ -64,8 +84,10 @@ class BluetoothMeshManager extends events_1.EventEmitter {
     }
     async startMesh() {
         return new Promise((resolve, reject) => {
-            if (isAndroid) {
-                // Android/Termux flow
+            const isUsingTermuxAdapter = bluetoothAdapter instanceof termux_adapter_1.TermuxBluetoothAdapter;
+            if (isUsingTermuxAdapter) {
+                // TermuxBluetoothAdapter flow (Android, Windows, or fallback)
+                console.log('🚀 Starting mesh with TermuxBluetoothAdapter');
                 if (bluetoothAdapter.isBluetoothAvailable && bluetoothAdapter.isBluetoothAvailable()) {
                     this.startDiscovery();
                     this.startHeartbeat();
@@ -80,7 +102,8 @@ class BluetoothMeshManager extends events_1.EventEmitter {
                 }
             }
             else {
-                // Noble flow for other platforms
+                // Noble flow for Linux/macOS
+                console.log('🚀 Starting mesh with Noble');
                 if (bluetoothAdapter.state === 'poweredOn') {
                     this.startDiscovery();
                     this.startHeartbeat();
@@ -103,12 +126,14 @@ class BluetoothMeshManager extends events_1.EventEmitter {
         if (this.isScanning)
             return;
         this.isScanning = true;
-        if (isAndroid) {
-            // Start Termux Bluetooth scanning
+        const isUsingTermuxAdapter = bluetoothAdapter instanceof termux_adapter_1.TermuxBluetoothAdapter;
+        console.log('🔍 Starting device discovery...');
+        if (isUsingTermuxAdapter) {
+            // Start Termux/Simulation Bluetooth scanning
             bluetoothAdapter.startScanning();
         }
         else {
-            // Start Noble scanning for other platforms
+            // Start Noble scanning for Linux/macOS
             bluetoothAdapter.startScanning([], true);
         }
         // Periodic discovery
@@ -120,12 +145,9 @@ class BluetoothMeshManager extends events_1.EventEmitter {
         if (!this.isScanning)
             return;
         this.isScanning = false;
-        if (isAndroid) {
-            bluetoothAdapter.stopScanning();
-        }
-        else {
-            bluetoothAdapter.stopScanning();
-        }
+        console.log('🛑 Stopping device discovery...');
+        // Both adapters have the same stopScanning method
+        bluetoothAdapter.stopScanning();
         if (this.discoveryTimer) {
             clearInterval(this.discoveryTimer);
             this.discoveryTimer = undefined;
